@@ -103,7 +103,8 @@ public class NarniaaDB implements Closeable {
 		int written = 0;
 		int remaining = valueSize;
 		while (written < valueSize) {
-			VanillaMappedBytes bytes = dataBlocks.acquire(blockindex++);
+			VanillaMappedBytes bytes = dataBlocks.acquire(blockindex);
+			bytes.position(blockOffset);
 			try {
 				int towrite = Math.min((int)bytes.remaining(), (int)(remaining));
 				bytes.write(value, written, towrite);
@@ -111,7 +112,10 @@ public class NarniaaDB implements Closeable {
 				remaining -= towrite;
 			} finally {
 				bytes.release();
+				blockOffset = 0;
+				blockindex++;
 			}
+			
 		}
 		
 		//create or recyle the entry

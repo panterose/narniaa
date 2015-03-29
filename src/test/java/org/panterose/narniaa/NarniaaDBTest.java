@@ -177,7 +177,6 @@ public class NarniaaDBTest {
 			assertEquals(1, bd.readByte(0));
 			assertEquals(24, bd.readByte(1023));
 			bd.release();
-			
 			//check data on second block
 			bd = db.dataBlocks.acquire(1).bytes();
 			assertEquals(1024, bd.size());
@@ -206,6 +205,24 @@ public class NarniaaDBTest {
 			bd = db.dataBlocks.acquire(2).bytes();
 			assertEquals(41, bd.readByte(2 * (1040 - 1024) - 1));
 			
+			// lets do a few updates out of order, to check offsets calculation
+			db.put(key2, bytes);
+			db.put(key1, bytes);
+			db.put(key2, bytes);
+			
+			//check data on first block
+			bd = db.dataBlocks.acquire(0).bytes();
+			assertEquals(1024, bd.size());
+			assertEquals(1, bd.readByte(0));
+			assertEquals(24, bd.readByte(1023));
+			bd.release();
+			//check data on second block
+			bd = db.dataBlocks.acquire(1).bytes();
+			assertEquals(1024, bd.size());
+			assertEquals(40, bd.readByte(1040 - 1024 - 1));
+			assertEquals(1, bd.readByte(1040 - 1024));
+			bd.release();
+			assertEquals(2, db.entries.size());
 		}
 	}
 }
