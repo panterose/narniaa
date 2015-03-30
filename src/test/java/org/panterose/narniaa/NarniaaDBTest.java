@@ -223,6 +223,12 @@ public class NarniaaDBTest {
 			assertEquals(1, bd.readByte(1040 - 1024));
 			bd.release();
 			assertEquals(2, db.entries.size());
+			entry = db.entries.get(new BeniKey(key2));
+			assertEquals(4160, entry.getValueOffset());
+			assertEquals(1040, entry.getValueSize());
+			assertEquals(1040 * 5, db.valueMaxOffset.get());
+			bd = db.dataBlocks.acquire(3).bytes();
+			//assertEquals(1, bd.readByte(4 * (1040 - 1024)));
 		}
 	}
 }

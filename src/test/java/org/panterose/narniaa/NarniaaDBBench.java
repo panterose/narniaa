@@ -28,25 +28,37 @@ public class NarniaaDBBench {
 	private final Path path = Paths.get(location, "docs");
 	
 	private static final Kryo kryo = new Kryo();
-	private static final byte[] data = new byte[10];
+	private static final byte[] data = new byte[1_000_000];
 	private static final Random r = new Random(0);
+	private static final Document doci = new Document();
+	private static final LocalDate date = LocalDate.of(2015, 3, 1);
+	private static final byte[] docbytes = new byte[1_000_020];
 	{
 		r.nextBytes(data);
+		doci.setId(0);
+		doci.setSym("0");
+		doci.setTimestamp(epoch(date));
+		doci.setData(data);
 		kryo.register(Document.class);
+		Output ko = new FastOutput(data.length + 512, 1 << 26);
+		ko.setBuffer(docbytes);
+		kryo.writeObject(ko, doci);
+		ko.flush();
+		ko.position();
 	}
 	
 	@Test
 	public void insert() throws IOException, ClassNotFoundException {
-		try (NarniaaDB db = new NarniaaDB(path, 1 << 8)) {
-			write(0, 5, db);
-			read(2, 3, db);
+		try (NarniaaDB db = new NarniaaDB(path, 1 << 26)) {
+			write(0, 5000, db);
+			read(1000, 3000, db);
 		}
 	}
 
 	public void write(int start, int end, NarniaaDB db) throws IOException {
 		long nbbytes = 0;
 		//byte[] out = new byte[data.length + 2048];
-		LocalDate date = LocalDate.of(2015, 3, 1);
+		
 		long startTime = System.currentTimeMillis();
 		
 		System.out.print("writing: ");
@@ -65,7 +77,9 @@ public class NarniaaDBBench {
 				ko.flush();
 				byte[] ser = ko.toBytes();
 				db.put(IntBuff.putInt(i).array(), ser);
+				//db.put(IntBuff.putInt(i).array(), docbytes);
 				nbbytes += ser.length;
+				//nbbytes += docbytes.length;
 				if (ko.getBuffer().length > data.length * 2) {
 					System.out.println("Buffer size :" + ko.getBuffer().length);
 				}
@@ -80,7 +94,7 @@ public class NarniaaDBBench {
 				throw e;
 			}
 		}
-		long time = System.currentTimeMillis() - startTime;
+		long time = System.currentTimeMillis() - startTime + 1;
 		System.out.printf("%n %,d B done at %,d MB /s %n", nbbytes, nbbytes / 1000 / time);
 
 	}
@@ -93,6 +107,8 @@ public class NarniaaDBBench {
 			try {
 				//System.out.print(" " + i);
 				byte[] bytes = db.get(IntBuff.putInt(i).array());
+				
+				//assertArrayEquals(docbytes, bytes);
 				Input ki = new FastInput(bytes);
 				Document doc = kryo.readObject(ki, Document.class);
 				nbbytes += bytes.length;
@@ -100,9 +116,12 @@ public class NarniaaDBBench {
 				// baos.reset();
 
 				assertEquals(i, doc.getId());
+				//assertEquals(0, doc.getId());
 				
 				// assertEquals(start, d.getTimestamp());
 				assertEquals((i % 10) + "", doc.getSym());
+				//assertEquals("0", doc.getSym());
+				
 				assertArrayEquals(data, doc.getData());
 				if (i % 1000 == 0) {
 					System.out.print(".");
